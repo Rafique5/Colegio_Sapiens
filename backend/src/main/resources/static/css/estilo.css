@@ -1,0 +1,57 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:#f4f6fa;color:#121c33}
+h1{margin:0 0 .3rem;font-size:1.7rem;font-weight:800;color:#121c33}
+h2{font-size:1.15rem;margin:0 0 .8rem;font-weight:700}
+.sub{color:#7a8499;margin:0 0 1.15rem;font-size:.95rem}
+.mut{color:#7a8499;font-size:.9rem}
+.inp,select.inp{width:100%;padding:.75rem .9rem;background:#eef1f6;border:1px solid transparent;border-radius:10px;font:inherit;color:#121c33}
+.inp::placeholder,select.inp:invalid{color:#9aa3b5}
+.inp:focus,select.inp:focus{outline:2px solid #d4b06a;background:#fff}
+label{display:block;font-size:.82rem;font-weight:600;color:#6b7386;margin:.95rem 0 .35rem}
+.btn{background:#c4963a;color:#121c33;font-weight:700;border:0;border-radius:9px;padding:.7rem 1.15rem;cursor:pointer;font:inherit;white-space:nowrap}
+.btn.sec{background:#fff;border:1px solid #dfe4ec;color:#121c33}
+.btn.esc{background:#1c2a4a;color:#fff;width:100%;padding:.85rem;border-radius:10px;font-size:1rem}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.card{background:#fff;border:1px solid #e6eaf1;border-radius:14px;padding:1.35rem 1.5rem;margin-bottom:1.2rem}
+.cartao-auth{width:100%;max-width:400px;padding:1.7rem 1.6rem 1.4rem;box-shadow:0 12px 40px rgba(18,28,51,.06)}
+.centro{min-height:100vh;display:grid;place-items:center;padding:1rem;background:#f4f6fa}
+.marca{display:flex;align-items:center;gap:.55rem;font-weight:700;margin-bottom:1.1rem}
+.cs{width:28px;height:28px;border-radius:50%;border:1.6px solid #c4963a;color:#c4963a;display:grid;place-items:center;font-size:.58rem;font-weight:800;background:#121c33;flex-shrink:0}
+.link{color:#c4963a;font-weight:600;font-size:.88rem;text-decoration:none}
+.rodape{color:#8a93a6;font-size:.88rem;margin-top:1.1rem}
+.rodape a{color:#121c33;font-weight:600;text-decoration:none}
+.erro{color:#b3261e;font-size:.85rem;min-height:1.1em}
+.ok{color:#1b7a3a;font-size:.85rem}
+.app{display:flex;min-height:100vh}
+.lateral{width:236px;background:#121c33;color:#c5cedd;padding:1.15rem .75rem;display:flex;flex-direction:column;gap:.2rem;flex-shrink:0}
+.lateral .marca{color:#fff;padding:.15rem .55rem 1rem;margin:0;font-size:.92rem}
+.lateral button{background:none;border:0;color:#c5cedd;text-align:left;padding:.78rem .85rem;border-radius:10px;cursor:pointer;font:inherit;font-size:.92rem}
+.lateral button.on{background:#c4963a;color:#121c33;font-weight:700}
+.lateral .fim{margin-top:auto;font-size:.78rem;padding:.7rem .55rem;color:#8e99ae}
+.lateral .fim button{padding:.45rem .55rem;font-size:.85rem;color:#c5cedd}
+.vista{flex:1;padding:2rem 2.2rem;overflow:auto}
+.barra{display:flex;gap:.7rem;margin-bottom:.4rem;align-items:center}
+.barra .inp{flex:1}
+table.t{width:100%;border-collapse:collapse;margin-top:.4rem}
+.t th{font-size:.75rem;color:#8a93a6;text-align:left;padding:.55rem .4rem;font-weight:600}
+.t td{padding:1.05rem .4rem;border-top:1px solid #eceff4;vertical-align:middle}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;padding:.18rem .6rem;border-radius:99px;background:#eef1f6;color:#6b7386}
+.pill.ok{background:#e4f6ea;color:#1b7a3a}
+.pill.off{background:#eef1f6;color:#7a8499}
+.pill.trf{background:#fdecea;color:#c62828}
+.perfis{display:grid;grid-template-columns:repeat(4,1fr);gap:.65rem}
+.perfis button{height:84px;background:#eef1f6;border:1px solid transparent;border-radius:10px;color:#6b7386;font-weight:600;cursor:pointer;font:inherit}
+.perfis button.on{background:#faf6ee;border:1.5px solid #c4963a;color:#121c33;font-weight:700}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.linha{display:flex;align-items:center;gap:.65rem;padding:1rem 0;border-top:1px solid #eceff4;flex-wrap:wrap}
+.linha:first-child{border-top:0}
+.seta{color:#c4963a;font-weight:700}
+.form-turma{display:none;margin-bottom:1rem;padding-top:.2rem}
+.form-turma.aberto{display:block}
+@media(max-width:800px){
+  .app{flex-direction:column}
+  .lateral{width:auto;flex-direction:row;flex-wrap:wrap}
+  .lateral .fim{margin-top:0;width:100%}
+  .duas,.perfis{grid-template-columns:1fr 1fr}
+  .vista{padding:1.2rem}
+}
