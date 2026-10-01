@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Colégio Sapiens - Entrar</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+<div class="centro">
+    <main class="card cartao-auth">
+        <div class="marca"><span class="cs">CS</span>Colégio Sapiens</div>
+        <h1>Entrar</h1>
+        <p class="sub">Acesso reservado a utilizadores registados.</p>
+        <form id="formulario-login" novalidate>
+            <label for="identificador">Utilizador ou email</label>
+            <input class="inp" type="text" id="identificador" autocomplete="username"
+                   placeholder="nome@colegiosapiens.co.mz">
+            <label for="senha">Palavra-passe</label>
+            <input class="inp" type="password" id="senha" autocomplete="current-password">
+            <p><a href="#" class="link" id="esqueci">Esqueci a palavra-passe</a></p>
+            <p id="mensagem" class="erro" role="alert" hidden></p>
+            <button type="submit" id="botao-entrar" class="btn esc">Entrar</button>
+        </form>
+        <p class="rodape">Ainda não tem conta? <a href="registo.html">Criar conta</a></p>
+    </main>
+</div>
+<script src="js/config.js"></script>
+<script src="js/login.js"></script>
+<script>
+    document.getElementById('esqueci').onclick = e => {
+        e.preventDefault();
+        alert('Contacte a secretaria ou o administrador para repor a palavra-passe.');
+    };
+</script>
+</body>
+</html>
