@@ -53,6 +53,11 @@ public class AcompanhamentoController {
         return servico.abrirNotificacao(Long.valueOf(autenticacao.getName()), id);
     }
 
+    @GetMapping("/solicitacoes")
+    public List<SolicitacaoDto.Resposta> todasAsSolicitacoes() {
+        return servico.todasAsSolicitacoes();
+    }
+
     @PostMapping("/notas")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> lancarNota(@Valid @RequestBody NotaDto.Requisicao dados) {
@@ -69,7 +74,7 @@ public class AcompanhamentoController {
         if (professorId == null) {
             throw new RegraNegocioException("Indique o professor.");
         }
-        int criadas = servico.solicitarReuniao(professorId, dados);
+        int criadas = servico.solicitarReuniao(professorId, dados, professor);
         return Map.of("mensagem", "Pedido enviado a " + criadas + " encarregado(s).");
     }
 }

@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProfessorRepositorio extends JpaRepository<Professor, Long> {
 
     boolean existsByCodigoDocente(String codigoDocente);
+
+    java.util.Optional<com.colegiosapiens.modelo.Professor> findByCodigoDocente(String codigoDocente);
 }

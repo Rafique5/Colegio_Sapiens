@@ -23,11 +23,13 @@ public final class SolicitacaoDto {
     }
 
     public record Resposta(Long id, String nomeProfessor, String nomeAluno, String motivo,
-                           LocalDate dataSugerida, String estado, LocalDateTime criadaEm) {
+                           LocalDate dataSugerida, String estado, LocalDateTime criadaEm,
+                           String nomeEncarregado) {
 
         public static Resposta de(SolicitacaoReuniao s) {
             return new Resposta(s.getId(), s.getProfessor().getNomeCompleto(), s.getAluno().getNomeCompleto(),
-                    s.getMotivo(), s.getDataSugerida(), s.getEstado(), s.getCriadaEm());
+                    s.getMotivo(), s.getDataSugerida(), s.getEstado(), s.getCriadaEm(),
+                    s.getEncarregado().getNomeCompleto());
         }
     }
 }

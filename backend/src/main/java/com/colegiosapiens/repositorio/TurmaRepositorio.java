@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface TurmaRepositorio extends JpaRepository<Turma, Long> {
 
     boolean existsByNomeTurmaAndAnoLectivo(String nomeTurma, int anoLectivo);
+
+    java.util.Optional<com.colegiosapiens.modelo.Turma> findByNomeTurmaAndAnoLectivo(String nomeTurma, int anoLectivo);
 }

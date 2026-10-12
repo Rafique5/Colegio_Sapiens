@@ -27,3 +27,14 @@ select.sel.ok{background:#e6f6ec;color:#1b7a3a}select.sel.off{background:#eff2f7
 /* ---- Portal do encarregado ---- */
 .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;max-width:900px}.cartoes .card{max-width:none;margin:0}
 .pill.warn{background:#fff1e6;color:#b45309}.pill.azul{background:#e6f1fa;color:#0b6bb0}
+
+/* ---- Professor ---- */
+.seg{display:inline-flex;border:1px solid #dfe4ec;border-radius:8px;overflow:hidden}
+.seg button{border:0;background:#eff2f7;padding:.5rem 1.1rem;cursor:pointer;font:inherit;color:#66738c}
+.seg button.on.p{background:#e6f6ec;color:#1b7a3a;font-weight:700}.seg button.on.f{background:#fdecec;color:#b3261e;font-weight:700}
+textarea.inp{resize:vertical}
+
+/* ---- Sincronização SGA ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.2rem;max-width:1000px}
+.stat{background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:1.1rem 1.3rem}.stat span{color:#66738c;font-size:.9rem}.stat strong{display:block;font-size:2rem;margin-top:.2rem}
+.topo-sga{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}

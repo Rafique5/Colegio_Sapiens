@@ -89,6 +89,18 @@ public class SegurancaConfig {
                 // Portal do encarregado: cada encarregado só vê os seus educandos (verificado no serviço)
                 .requestMatchers("/api/portal/**").hasRole("ENCARREGADO")
 
+                // Sincronização com o SGA
+                .requestMatchers("/api/sga/**").hasAnyRole("ADMINISTRADOR", "SECRETARIA")
+
+                // Contas de acesso: secretaria e administrador consultam e geram; só o administrador (des)activa
+                .requestMatchers(HttpMethod.PUT, "/api/contas/**").hasRole("ADMINISTRADOR")
+                .requestMatchers("/api/contas/**").hasAnyRole("ADMINISTRADOR", "SECRETARIA")
+                .requestMatchers(HttpMethod.GET, "/api/solicitacoes").hasAnyRole("ADMINISTRADOR", "SECRETARIA")
+
+                // Área do professor e associação de professores a turmas
+                .requestMatchers("/api/professor/**").hasRole("PROFESSOR")
+                .requestMatchers("/api/alocacoes/**").hasRole("ADMINISTRADOR")
+
                 // Lançar notas e pedir reuniões: administrador (testes) e professores
                 .requestMatchers(HttpMethod.POST, "/api/notas", "/api/solicitacoes")
                         .hasAnyRole("ADMINISTRADOR", "PROFESSOR")

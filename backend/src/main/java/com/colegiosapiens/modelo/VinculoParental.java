@@ -44,6 +44,10 @@ public class VinculoParental {
     @Column(length = 30)
     private String parentesco;
 
+    /** Vínculo confirmado pela secretaria (nulo = por validar). */
+    @Column
+    private Boolean validado;
+
     public VinculoParental() {
     }
 
@@ -65,6 +69,9 @@ public class VinculoParental {
 
     public String getParentesco() { return parentesco; }
     public void setParentesco(String parentesco) { this.parentesco = parentesco; }
+
+    public boolean isValidado() { return Boolean.TRUE.equals(validado); }
+    public void setValidado(boolean validado) { this.validado = validado; }
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }

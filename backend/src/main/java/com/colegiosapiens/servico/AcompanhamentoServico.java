@@ -10,11 +10,13 @@ import com.colegiosapiens.modelo.Nota;
 import com.colegiosapiens.modelo.Professor;
 import com.colegiosapiens.modelo.SolicitacaoReuniao;
 import com.colegiosapiens.modelo.VinculoParental;
+import com.colegiosapiens.repositorio.AlocacaoDocenteRepositorio;
 import com.colegiosapiens.repositorio.AlunoRepositorio;
 import com.colegiosapiens.repositorio.NotaRepositorio;
 import com.colegiosapiens.repositorio.ProfessorRepositorio;
 import com.colegiosapiens.repositorio.SolicitacaoReuniaoRepositorio;
 import com.colegiosapiens.repositorio.VinculoParentalRepositorio;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +34,13 @@ public class AcompanhamentoServico {
     private final AlunoRepositorio alunos;
     private final ProfessorRepositorio professores;
     private final SolicitacaoReuniaoRepositorio solicitacoes;
+    private final AlocacaoDocenteRepositorio alocacoes;
 
     public AcompanhamentoServico(VinculoParentalRepositorio vinculos, NotaRepositorio notas,
                                  AlunoRepositorio alunos, ProfessorRepositorio professores,
-                                 SolicitacaoReuniaoRepositorio solicitacoes) {
+                                 SolicitacaoReuniaoRepositorio solicitacoes,
+                                 AlocacaoDocenteRepositorio alocacoes) {
+        this.alocacoes = alocacoes;
         this.vinculos = vinculos;
         this.notas = notas;
         this.alunos = alunos;
@@ -94,11 +99,14 @@ public class AcompanhamentoServico {
 
     /** Cria um pedido de reunião para cada encarregado activo do aluno. Devolve quantos foram criados. */
     @Transactional
-    public int solicitarReuniao(Long professorId, SolicitacaoDto.Requisicao dados) {
+    public int solicitarReuniao(Long professorId, SolicitacaoDto.Requisicao dados, boolean soDasSuasTurmas) {
         Professor professor = professores.findById(professorId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Professor não encontrado."));
         Aluno aluno = alunos.findById(dados.alunoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Aluno não encontrado."));
+        if (soDasSuasTurmas && !alocacoes.existsByProfessorIdAndTurmaId(professorId, aluno.getTurma().getId())) {
+            throw new RecursoNaoEncontradoException("Aluno não encontrado.");
+        }
         List<VinculoParental> ligacoes = vinculos.findByAlunoIdAndAtivoTrue(aluno.getId());
         if (ligacoes.isEmpty()) {
             throw new RegraNegocioException("O aluno ainda não tem encarregado associado.");
@@ -108,6 +116,14 @@ public class AcompanhamentoServico {
                     dados.motivo().trim(), dados.dataSugerida()));
         }
         return ligacoes.size();
+    }
+
+    /** Todos os pedidos (visão da secretaria), do mais recente para o mais antigo. */
+    @Transactional(readOnly = true)
+    public List<SolicitacaoDto.Resposta> todasAsSolicitacoes() {
+        return solicitacoes.findAll(Sort.by(Sort.Direction.DESC, "criadaEm")).stream()
+                .map(SolicitacaoDto.Resposta::de)
+                .toList();
     }
 
     /** Pedidos recebidos pelo encarregado, do mais recente para o mais antigo. */

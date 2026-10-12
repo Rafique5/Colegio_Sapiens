@@ -1,4 +1,4 @@
-const ADM = 'ADMINISTRADOR', SEC = 'SECRETARIA', ENC = 'ENCARREGADO';
+const ADM = 'ADMINISTRADOR', SEC = 'SECRETARIA', ENC = 'ENCARREGADO', PRO = 'PROFESSOR';
 let perfil = '';
 const $ = s => document.querySelector(s);
 function h(tag, a = {}, ...k) {
@@ -211,11 +211,191 @@ async function pLancar(v) {
       }) }, 'Enviar pedido')));
 }
 
+// ---- Secretaria: Contas de acesso, Perfil do encarregado, Solicitações de reunião ----
+const PERFIS = { ADMINISTRADOR: 'Administrador', SECRETARIA: 'Secretaria', PROFESSOR: 'Professor', ENCARREGADO: 'Encarregado', ALUNO: 'Aluno' };
+const put = (c, d) => api(c, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+
+async function pContas(v) {
+  let dados = await api('/api/contas');
+  const ESTC = { ATIVA: ['Ativa', 'ok'], PENDENTE: ['Pendente', 'warn'], INATIVA: ['Inativa', 'off'] };
+  const busca = h('input', { class: 'inp', placeholder: 'Pesquisar por nome ou email' }), corpo = h('tbody'), gerar = h('button', { class: 'btn esc', style: 'width:auto' }), res = h('div');
+  const alternar = c => put('/api/contas/' + c.id + '/estado?ativa=' + (c.estado === 'INATIVA'), null).then(recarregar).catch(e => alert(e.message));
+  const desenhar = () => {
+    const q = busca.value.toLowerCase(), r = dados.filter(c => (c.nomeCompleto + ' ' + (c.email || '')).toLowerCase().includes(q)), n = dados.filter(c => c.estado === 'PENDENTE').length;
+    corpo.replaceChildren(...r.map(c => h('tr', {}, td(c.nomeCompleto), td(PERFIS[c.perfil], 1), td(c.codigo || '—', 1), td(pill(ESTC[c.estado][0], ESTC[c.estado][1])),
+      perfil === ADM ? td(h('button', { class: 'btn sec', onclick: () => alternar(c) }, c.estado === 'INATIVA' ? 'Activar' : 'Desactivar')) : null)));
+    gerar.textContent = 'Gerar contas pendentes (' + n + ')'; gerar.disabled = n === 0;
+  };
+  const recarregar = async () => { dados = await api('/api/contas'); desenhar(); };
+  gerar.onclick = async () => {
+    try {
+      const cs = await post('/api/contas/gerar-pendentes');
+      res.replaceChildren(h('div', { class: 'card' }, h('h2', {}, 'Contas geradas'), h('p', { class: 'mut' }, 'Anote estas senhas temporárias: não voltam a aparecer.'),
+        tabela(['Nome', 'Utilizador', 'Senha temporária'], cs.map(c => h('tr', {}, td(c.nome), td(c.identificador, 1), td(c.senhaTemporaria, 1))))));
+      await recarregar();
+    } catch (e) { alert(e.message); }
+  };
+  busca.oninput = desenhar; desenhar();
+  const cols = ['Nome', 'Perfil', 'Código', 'Conta'].concat(perfil === ADM ? ['Acção'] : []), tb = tabela(cols, []); tb.replaceChild(corpo, tb.tBodies[0]);
+  v.append(...cab('Contas de acesso', 'Contas dos utilizadores. Uma conta fica "Pendente" enquanto não tem senha definida.'), res, h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, gerar), tb));
+}
+
+async function pPerfilEnc(v) {
+  const encs = await api('/api/encarregados');
+  const busca = h('input', { class: 'inp', placeholder: 'Pesquisar encarregado por nome' }), area = h('div'), m = msg();
+  const abrir = async id => {
+    const p = await api('/api/encarregados/' + id + '/perfil');
+    const tel = h('input', { class: 'inp', value: p.telefone || '', placeholder: '+258 84 123 4567' }), em = h('input', { class: 'inp', type: 'email', value: p.email || '', placeholder: 'nome@exemplo.com' }), pr = h('input', { class: 'inp', value: p.profissao || '', placeholder: 'Opcional' }), m2 = msg();
+    const marcas = p.educandos.map(e => { const cb = h('input', { type: 'checkbox' }); cb.checked = e.validado; const t = h('strong', {}, e.validado ? ' Validado' : ' Por validar'); cb.onchange = () => { t.textContent = cb.checked ? ' Validado' : ' Por validar'; }; return { e, cb, t }; });
+    area.replaceChildren(h('h2', {}, p.nomeCompleto), h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Telemóvel'), tel), h('div', {}, h('label', {}, 'Email'), em)), h('label', {}, 'Profissão'), pr,
+      h('label', {}, 'Educandos vinculados'),
+      tabela(['Aluno', 'Turma', 'Parentesco', 'Vínculo'], marcas.length ? marcas.map(x => h('tr', {}, td(x.e.nomeAluno), td(x.e.turma, 1), td(x.e.parentesco || '—', 1), h('td', {}, x.cb, x.t)))
+        : [h('tr', {}, h('td', { class: 'mut' }, 'Sem educandos associados. Use "Associação Aluno–Encarregado".'))]), m2, h('br'),
+      h('button', { class: 'btn', onclick: async ev => { const b = ev.target; b.disabled = true; try {
+        await put('/api/encarregados/' + id + '/perfil', { telefone: tel.value.trim(), email: em.value.trim(), profissao: pr.value.trim(), vinculos: marcas.map(x => ({ vinculoId: x.e.vinculoId, validado: x.cb.checked })) });
+        dizer(m2, 'Perfil guardado.', 1); } catch (e) { dizer(m2, e.message); } b.disabled = false; } }, 'Guardar perfil'), ' ',
+      h('button', { class: 'btn sec', onclick: () => { area.replaceChildren(); busca.value = ''; } }, 'Cancelar'));
+  };
+  const pesquisar = () => {
+    const q = busca.value.trim().toLowerCase(), r = encs.filter(e => e.nomeCompleto.toLowerCase().includes(q));
+    m.textContent = '';
+    if (!q || !r.length) { area.replaceChildren(); return dizer(m, q ? 'Nenhum encarregado encontrado.' : 'Escreva o nome do encarregado.'); }
+    if (r.length === 1) return abrir(r[0].id).catch(e => dizer(m, e.message));
+    area.replaceChildren(h('p', { class: 'mut' }, 'Escolha o encarregado:'), ...r.map(e => h('div', { class: 'linha' }, h('span', { style: 'flex:1' }, e.nomeCompleto), h('button', { class: 'btn sec', onclick: () => abrir(e.id).catch(x => dizer(m, x.message)) }, 'Abrir'))));
+  };
+  busca.onkeydown = ev => { if (ev.key === 'Enter') pesquisar(); };
+  v.append(...cab('Perfil do encarregado', 'Complete os contactos e valide o vínculo com os educandos.'),
+    h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, h('button', { class: 'btn sec', onclick: pesquisar }, 'Pesquisar')), m, area));
+}
+
+async function pSolicitacoes(v) {
+  const dados = await api('/api/solicitacoes');
+  const busca = h('input', { class: 'inp', placeholder: 'Pesquisar por aluno ou professor' }), filtro = h('select', { class: 'inp', style: 'width:auto' }, [['', 'Todos os estados'], ['ENVIADA', 'Nova'], ['LIDA', 'Lida']].map(([k, t]) => h('option', { value: k }, t))), corpo = h('tbody');
+  const desenhar = () => {
+    const q = busca.value.toLowerCase(), r = dados.filter(s => (!filtro.value || s.estado === filtro.value) && (s.nomeAluno + ' ' + s.nomeProfessor).toLowerCase().includes(q));
+    corpo.replaceChildren(...(r.length ? r.map(s => h('tr', {}, td('S-' + String(s.id).padStart(3, '0')), td('Prof. ' + s.nomeProfessor, 1), td(s.nomeAluno, 1), td(s.nomeEncarregado, 1), td(s.dataSugerida, 1),
+      td(pill(s.estado === 'ENVIADA' ? 'Nova' : 'Lida', s.estado === 'ENVIADA' ? 'warn' : 'azul')))) : [h('tr', {}, h('td', { class: 'mut' }, 'Sem solicitações.'))]));
+  };
+  busca.oninput = desenhar; filtro.onchange = desenhar; desenhar();
+  const tb = tabela(['Ref.', 'Professor', 'Aluno', 'Encarregado', 'Data sugerida', 'Estado'], []); tb.replaceChild(corpo, tb.tBodies[0]);
+  v.append(...cab('Solicitações de reunião', 'Acompanhe as comunicações dos professores aos encarregados.'), h('div', { class: 'card', style: 'max-width:none' }, h('div', { class: 'barra' }, busca, filtro), tb));
+}
+
+// ---- Professor: Meus alunos, Assiduidade, Solicitar reunião ----
+const hoje = (dias = 0) => new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + dias * 864e5).toISOString().slice(0, 10);
+
+async function pMeusAlunos(v) {
+  const as = await api('/api/professor/alunos'), turmas = [...new Set(as.map(a => a.nomeTurma))];
+  const fT = h('select', { class: 'inp', style: 'width:auto' }, h('option', { value: '' }, 'Todas as turmas'), turmas.map(t => h('option', { value: t }, t)));
+  const busca = h('input', { class: 'inp', placeholder: 'Pesquisar aluno' }), corpo = h('tbody');
+  const desenhar = () => {
+    const q = busca.value.toLowerCase(), r = as.filter(a => (!fT.value || a.nomeTurma === fT.value) && a.nomeCompleto.toLowerCase().includes(q));
+    corpo.replaceChildren(...(r.length ? r.map(a => h('tr', {}, td(a.nomeCompleto), td(a.codigoEstudante, 1), td(a.nomeTurma, 1), td(h('button', { class: 'btn sec', onclick: () => ir('solicitar', a.id) }, 'Solicitar reunião'))))
+      : [h('tr', {}, h('td', { class: 'mut' }, as.length ? 'Sem resultados.' : 'Ainda não tem turmas associadas. Peça ao administrador.'))]));
+  };
+  busca.oninput = desenhar; fT.onchange = desenhar; desenhar();
+  const tb = tabela(['Nome', 'Nº estudante', 'Turma', 'Ação'], []); tb.replaceChild(corpo, tb.tBodies[0]);
+  v.append(...cab('Meus alunos', 'Alunos das suas turmas.'), h('div', { class: 'card', style: 'max-width:none' }, h('div', { class: 'barra' }, fT, busca), tb));
+}
+
+async function pAssiduidade(v) {
+  const ts = await api('/api/professor/turmas');
+  v.append(...cab('Assiduidade', 'Registe a presença ou falta dos alunos.'));
+  if (!ts.length) { v.append(h('p', { class: 'mut' }, 'Ainda não tem turmas associadas. Peça ao administrador.')); return; }
+  const sel = h('select', { class: 'inp', style: 'width:auto' }, ts.map(t => h('option', { value: t.id }, t.nome))), dia = h('input', { class: 'inp', type: 'date', style: 'width:auto' }), caixa = h('div'), m = msg();
+  dia.value = hoje(); dia.max = hoje();
+  let estado = {};
+  const carregar = async () => {
+    if (!dia.value) return;
+    m.textContent = '';
+    const ls = await api('/api/professor/assiduidade?turmaId=' + sel.value + '&data=' + dia.value);
+    estado = {}; ls.forEach(l => { if (l.estado) estado[l.alunoId] = l.estado === 'PRESENTE'; });
+    caixa.replaceChildren(tabela(['Aluno', 'Nº', 'Registo'], ls.length ? ls.map(l => {
+      const bp = h('button', { type: 'button' }, 'Presente'), bf = h('button', { type: 'button' }, 'Falta');
+      const pintar = () => { bp.className = estado[l.alunoId] === true ? 'on p' : ''; bf.className = estado[l.alunoId] === false ? 'on f' : ''; };
+      bp.onclick = () => { estado[l.alunoId] = true; pintar(); }; bf.onclick = () => { estado[l.alunoId] = false; pintar(); }; pintar();
+      return h('tr', {}, td(l.nomeAluno), td(l.codigo, 1), h('td', {}, h('div', { class: 'seg' }, bp, bf)));
+    }) : [h('tr', {}, h('td', { class: 'mut' }, 'Esta turma ainda não tem alunos.'))]));
+  };
+  const falha = e => dizer(m, e.message);
+  sel.onchange = () => carregar().catch(falha); dia.onchange = () => carregar().catch(falha);
+  v.append(h('div', { class: 'card', style: 'max-width:none' }, h('div', { class: 'barra' }, sel, dia), caixa, m, h('br'),
+    h('button', { class: 'btn', onclick: async ev => {
+      const b = ev.target, marcas = Object.entries(estado).map(([id, p]) => ({ alunoId: Number(id), presente: p }));
+      if (!marcas.length) return dizer(m, 'Marque a presença ou falta de pelo menos um aluno.');
+      b.disabled = true;
+      try { const r = await post('/api/professor/assiduidade', { turmaId: Number(sel.value), data: dia.value, marcas }); dizer(m, r.mensagem, 1); } catch (e) { falha(e); }
+      b.disabled = false;
+    } }, 'Guardar registo')));
+  await carregar();
+}
+
+async function pSolicitar(v, pre) {
+  const as = await api('/api/professor/alunos');
+  v.append(...cab('Solicitar reunião', 'Indique o motivo e a data sugerida. O encarregado será notificado.'));
+  if (!as.length) { v.append(h('p', { class: 'mut' }, 'Ainda não tem alunos. Peça ao administrador para o associar a uma turma.')); return; }
+  const sel = h('select', { class: 'inp' }, as.map(a => h('option', { value: a.id }, a.nomeCompleto + ' · ' + a.nomeTurma))), motivo = h('textarea', { class: 'inp', rows: '5', placeholder: 'Descreva o assunto da reunião' }), data = h('input', { class: 'inp', type: 'date', style: 'width:auto' }), m = msg();
+  if (pre) sel.value = pre; data.value = hoje(7); data.min = hoje();
+  v.append(h('div', { class: 'card' }, h('label', {}, 'Aluno'), sel, h('label', {}, 'Motivo'), motivo, h('label', {}, 'Data sugerida'), data, m, h('br'),
+    h('button', { class: 'btn', onclick: async ev => {
+      const b = ev.target; if (!motivo.value.trim()) return dizer(m, 'Descreva o motivo da reunião.');
+      b.disabled = true;
+      try { const r = await post('/api/solicitacoes', { alunoId: Number(sel.value), motivo: motivo.value.trim(), dataSugerida: data.value }); dizer(m, r.mensagem, 1); motivo.value = ''; } catch (e) { dizer(m, e.message); }
+      b.disabled = false;
+    } }, 'Enviar solicitação')));
+}
+
+// ---- Administrador: associar professores a turmas ----
+async function pDocencia(v) {
+  const [ps, ts] = await Promise.all([api('/api/professores'), api('/api/turmas')]);
+  const sp = h('select', { class: 'inp' }, ps.map(p => h('option', { value: p.id }, p.nomeCompleto))), st = h('select', { class: 'inp' }, ts.map(t => h('option', { value: t.id }, t.nomeTurma + ' (' + t.anoLectivo + ')'))), m = msg(), lista = h('div');
+  const carregar = async () => {
+    const ls = await api('/api/alocacoes');
+    lista.replaceChildren(ls.length ? tabela(['Professor', 'Turma', ''], ls.map(a => h('tr', {}, td(a.nomeProfessor), td(a.nomeTurma, 1),
+      td(h('button', { class: 'btn sec', onclick: () => api('/api/alocacoes/' + a.id, { method: 'DELETE' }).then(carregar).catch(e => alert(e.message)) }, 'Remover'))))) : h('p', { class: 'mut' }, 'Sem associações.'));
+  };
+  v.append(...cab('Turmas do professor', 'Associe cada professor às turmas que lecciona. É isto que define os "Meus alunos" de cada um.'),
+    h('div', { class: 'card' }, h('label', {}, 'Professor'), sp, h('label', {}, 'Turma'), st, m, h('br'),
+      h('button', { class: 'btn', onclick: async ev => { const b = ev.target; b.disabled = true;
+        try { await post('/api/alocacoes', { professorId: Number(sp.value), turmaId: Number(st.value) }); dizer(m, 'Associação criada.', 1); await carregar(); } catch (e) { dizer(m, e.message); }
+        b.disabled = false; } }, 'Associar')),
+    h('div', { class: 'card' }, h('h2', {}, 'Associações existentes'), lista));
+  await carregar();
+}
+
+// ---- Secretaria: Sincronização SGA ----
+const dtf = x => new Date(x).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+async function pSga(v) {
+  const topo = h('div'), historico = h('div'), cartoes = h('div', { class: 'stats' }), m = msg();
+  const botao = h('button', { class: 'btn' }, 'Sincronizar agora');
+  const desenhar = r => {
+    cartoes.replaceChildren(...[['Alunos', r.alunos], ['Turmas', r.turmas], ['Professores', r.professores], ['Encarregados', r.encarregados]].map(([t, n]) => h('div', { class: 'stat' }, h('span', {}, t), h('strong', {}, String(n)))));
+    const ult = r.historico[0];
+    topo.replaceChildren(h('h2', {}, 'Última sincronização'), h('p', { class: 'mut' }, ult ? dtf(ult.dataHora) + ' · ' + (ult.estado === 'CONCLUIDA' ? ult.mensagem.toLowerCase() : 'falhou: ' + ult.mensagem) : 'Ainda não foi feita nenhuma sincronização.'));
+    historico.replaceChildren(r.historico.length ? tabela(['Data', 'Registos', 'Novos', 'Alterados', 'Estado'], r.historico.map(x => {
+      const ok = x.estado === 'CONCLUIDA';
+      return h('tr', {}, td(dtf(x.dataHora)), td(x.registos || '—', 1), td(ok ? x.novos : '—', 1), td(ok ? x.alterados : '—', 1), td(pill(ok ? 'Concluída' : 'Falhou: ' + x.mensagem, ok ? 'ok' : 'tr')));
+    })) : h('p', { class: 'mut' }, 'Sem histórico.'));
+  };
+  botao.onclick = async () => {
+    botao.disabled = true; botao.textContent = 'A sincronizar...'; m.textContent = '';
+    try { await post('/api/sga/sincronizar'); desenhar(await api('/api/sga')); } catch (e) { dizer(m, e.message); }
+    botao.disabled = false; botao.textContent = 'Sincronizar agora';
+  };
+  desenhar(await api('/api/sga'));
+  v.append(...cab('Sincronização SGA', 'O SGA é a fonte única de alunos, turmas, professores, encarregados e vínculos.'), cartoes,
+    h('div', { class: 'card', style: 'max-width:1000px' }, h('div', { class: 'topo-sga' }, topo, botao), m, historico,
+      h('p', { class: 'mut' }, 'Ligação de demonstração: os dados vêm de um SGA simulado. As contas novas ficam "Pendentes" em Contas de acesso.')));
+}
+
 const VISTAS = { turma: ['', pAlunosTurma] }; // páginas fora do menu
 
 const PAGINAS = { perfis: ['Cadastro de Perfis', pPerfis, [ADM, SEC]], turmas: ['Turmas', pTurmas, [ADM, SEC]], professores: ['Professores', pProf, [ADM, SEC]],
   criar: ['Criar Conta', pCriar, [ADM, SEC]], encarregados: ['Encarregados', pEnc, [ADM, SEC]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM, SEC]],
-  educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]], lancar: ['Lançamentos (teste)', pLancar, [ADM]] };
+  educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]], lancar: ['Lançamentos (teste)', pLancar, [ADM]],
+  sga: ['Sincronização SGA', pSga, [ADM, SEC]], contas: ['Contas de acesso', pContas, [ADM, SEC]], perfilEnc: ['Perfil do encarregado', pPerfilEnc, [ADM, SEC]], solicitacoes: ['Solicitações', pSolicitacoes, [ADM, SEC]],
+  docencia: ['Turmas do professor', pDocencia, [ADM]],
+  meusAlunos: ['Meus alunos', pMeusAlunos, [PRO]], assiduidade: ['Assiduidade', pAssiduidade, [PRO]], solicitar: ['Solicitar reunião', pSolicitar, [PRO]] };
 
 async function ir(k, arg) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('on', b.dataset.k === (k === 'turma' ? 'turmas' : k)));

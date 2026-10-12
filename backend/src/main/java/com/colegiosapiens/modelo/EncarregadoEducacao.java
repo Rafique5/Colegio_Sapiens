@@ -16,9 +16,15 @@ public class EncarregadoEducacao extends Utilizador {
     @Column(name = "notificacao_boas_vindas_enviada", nullable = false)
     private boolean notificacaoBoasVindasEnviada = false;
 
+    @Column(length = 100)
+    private String profissao;
+
     public EncarregadoEducacao() {
         super(Perfil.ENCARREGADO);
     }
+
+    public String getProfissao() { return profissao; }
+    public void setProfissao(String profissao) { this.profissao = profissao; }
 
     public boolean isNotificacaoBoasVindasEnviada() { return notificacaoBoasVindasEnviada; }
     public void setNotificacaoBoasVindasEnviada(boolean valor) { this.notificacaoBoasVindasEnviada = valor; }

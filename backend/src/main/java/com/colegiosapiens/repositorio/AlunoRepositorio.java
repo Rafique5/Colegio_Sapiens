@@ -12,4 +12,6 @@ public interface AlunoRepositorio extends JpaRepository<Aluno, Long> {
 
     /** Lista os alunos de uma turma (navega pela propriedade turma.id). */
     List<Aluno> findByTurmaId(Long turmaId);
+
+    java.util.Optional<com.colegiosapiens.modelo.Aluno> findByCodigoEstudante(String codigoEstudante);
 }
