@@ -1,4 +1,4 @@
-const ADM = 'ADMINISTRADOR', SEC = 'SECRETARIA';
+const ADM = 'ADMINISTRADOR', SEC = 'SECRETARIA', ENC = 'ENCARREGADO';
 let perfil = '';
 const $ = s => document.querySelector(s);
 function h(tag, a = {}, ...k) {
@@ -40,21 +40,30 @@ function lista(o) {
   };
 }
 
+// Menu de estado do aluno (Ativo / Inativo / Transferido): grava no backend ao escolher
+const SIT = { ATIVO: ['Ativo', 'ok'], INATIVO: ['Inativo', 'off'], TRANSFERIDO: ['Transferido', 'tr'] };
+function seletorSituacao(a) {
+  const s = h('select', { class: 'sel ' + SIT[a.situacao][1] }, Object.entries(SIT).map(([k, [t]]) => h('option', { value: k }, t)));
+  s.value = a.situacao;
+  s.onchange = async () => { try { await api('/api/alunos/' + a.id + '/situacao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ situacao: s.value }) }); ir('perfis'); } catch (e) { alert(e.message); s.value = a.situacao; } };
+  return s;
+}
+
 const pPerfis = lista({ titulo: 'Cadastro de Perfis', sub: 'Consulte e faça a gestão dos perfis de alunos do colégio.', busca: 'Pesquisar aluno por nome ou nº de estudante',
   botao: '+ Criar conta', criar: 'Aluno', cols: ['Nome', 'Nº estudante', 'Turma', 'Estado'],
-  carregar: async () => (await api('/api/alunos')).map(a => ({ busca: a.nomeCompleto + ' ' + a.codigoEstudante, cel: [a.nomeCompleto, a.codigoEstudante, a.nomeTurma, estado(a.ativo)] })) });
+  carregar: async () => (await api('/api/alunos')).map(a => ({ busca: a.nomeCompleto + ' ' + a.codigoEstudante, cel: [a.nomeCompleto, a.codigoEstudante, a.nomeTurma, seletorSituacao(a)] })) });
 
 const pTurmas = v => lista({ titulo: 'Cadastro de Turmas', sub: 'Consulte e faça a gestão das turmas do colégio.', busca: 'Pesquisar turma por nome ou código',
   botao: '+ Nova turma', criar: perfil === ADM ? 'x' : null, cols: ['Turma', 'Nível', 'Nº Alunos', 'Estado'],
   carregar: async () => {
     const [ts, as] = await Promise.all([api('/api/turmas'), api('/api/alunos')]), ano = new Date().getFullYear();
     return ts.map(t => { const n = (t.nomeTurma.match(/^\d+/) || [])[0];
-      return { busca: t.nomeTurma, cel: [t.nomeTurma, n ? n + 'º Ano' : '—', as.filter(a => a.turmaId === t.id).length, estado(t.anoLectivo >= ano)] }; });
+      return { busca: t.nomeTurma, cel: [t.nomeTurma, n ? n + 'º Ano' : '—', (q => h('button', { class: 'btn sec', onclick: () => ir('turma', t.id) }, q + ' · Ver alunos'))(as.filter(a => a.turmaId === t.id).length), estado(t.anoLectivo >= ano)] }; });
   },
   form: perfil !== ADM ? null : recarregar => {
     const n = h('input', { class: 'inp', placeholder: 'Ex: 10ª A' }), a = h('input', { class: 'inp', type: 'number', value: new Date().getFullYear() }), s = h('input', { class: 'inp', placeholder: 'Sala (opcional)' }), m = msg();
     return h('div', { class: 'card' }, h('h2', {}, 'Nova turma'), h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Nome da turma'), n), h('div', {}, h('label', {}, 'Ano lectivo'), a)), h('label', {}, 'Sala'), s, m, h('br'),
-      h('button', { class: 'btn', onclick: async () => { try { await post('/api/turmas', { nomeTurma: n.value.trim(), anoLectivo: Number(a.value), sala: s.value.trim() || null }); n.value = s.value = ''; dizer(m, 'Turma criada.', 1); await recarregar(); } catch (e) { dizer(m, e.message); } } }, 'Criar turma'));
+      h('button', { class: 'btn', onclick: async ev => { const b = ev.target; b.disabled = true; try { await post('/api/turmas', { nomeTurma: n.value.trim(), anoLectivo: Number(a.value), sala: s.value.trim() || null }); n.value = s.value = ''; dizer(m, 'Turma criada.', 1); await recarregar(); } catch (e) { dizer(m, e.message); } b.disabled = false; } }, 'Criar turma'));
   } })(v);
 
 const pProf = v => lista({ titulo: 'Cadastro de Professores', sub: 'Consulte e faça a gestão dos professores do colégio.', busca: 'Pesquisar professor por nome',
@@ -128,13 +137,90 @@ async function pAssoc(v) {
   await carregar();
 }
 
+async function pAlunosTurma(v, id) {
+  const [ts, as] = await Promise.all([api('/api/turmas'), api('/api/turmas/' + id + '/alunos')]), t = ts.find(x => x.id === id);
+  v.append(...cab('Alunos da turma ' + (t ? t.nomeTurma : ''), as.length + ' aluno(s) nesta turma.'),
+    h('div', { class: 'card' }, h('div', { class: 'barra' }, h('button', { class: 'btn sec', onclick: () => ir('turmas') }, '← Voltar às turmas'), h('button', { class: 'btn', onclick: () => ir('criar', 'Aluno') }, '+ Criar conta')),
+      tabela(['Nome', 'Nº estudante', 'Estado'], as.length ? as.map(a => h('tr', {}, td(a.nomeCompleto), td(a.codigoEstudante, 1), td(pill(SIT[a.situacao][0], SIT[a.situacao][1])))) : [h('tr', {}, h('td', { class: 'mut' }, 'Esta turma ainda não tem alunos.'))])));
+}
+// ---- Portal do encarregado: Meus educandos, Notas, Notificações ----
+const fmt = n => n == null ? '—' : String(n).replace('.', ',');
+async function pEducandos(v) {
+  const es = await api('/api/portal/educandos');
+  v.append(...cab('Meus educandos', 'Todos os educandos associados à sua conta.'),
+    es.length ? h('div', { class: 'cartoes' }, es.map(a => h('div', { class: 'card' }, h('h2', {}, a.nomeCompleto), h('p', { class: 'mut' }, a.nomeTurma + ' · Nº ' + a.codigoEstudante),
+      pill(SIT[a.situacao][0], SIT[a.situacao][1]), h('br'), h('br'), h('button', { class: 'btn sec', onclick: () => ir('notas', a.id) }, 'Ver notas'))))
+      : h('p', { class: 'mut' }, 'Ainda não há educandos associados à sua conta. Contacte a secretaria.'));
+}
+
+async function pNotas(v, id) {
+  const es = await api('/api/portal/educandos');
+  v.append(...cab('Notas', 'Notas por disciplina — 1.º trimestre (parcial).'));
+  if (!es.length) { v.append(h('p', { class: 'mut' }, 'Ainda não há educandos associados à sua conta.')); return; }
+  const sel = h('select', { class: 'inp', style: 'width:auto' }, es.map(a => h('option', { value: a.id }, a.nomeCompleto))), caixa = h('div');
+  sel.value = id || es[0].id;
+  const SITC = { Positiva: 'ok', 'Em risco': 'warn', Negativa: 'tr' };
+  const carregar = async () => {
+    const ls = await api('/api/portal/educandos/' + sel.value + '/notas?trimestre=1');
+    caixa.replaceChildren(tabela(['Disciplina', 'Teste 1', 'Teste 2', 'Média parcial', 'Situação'],
+      ls.length ? ls.map(l => h('tr', {}, td(l.disciplina), td(fmt(l.teste1), 1), td(fmt(l.teste2), 1), td(fmt(l.mediaParcial), 1), td(pill(l.situacao, SITC[l.situacao]))))
+        : [h('tr', {}, h('td', { class: 'mut' }, 'Ainda não há notas lançadas.'))]), h('p', { class: 'mut' }, 'Média final calculada no fim do trimestre.'));
+  };
+  sel.onchange = () => carregar().catch(e => { caixa.textContent = e.message; });
+  v.append(h('div', { class: 'card' }, sel, caixa)); await carregar();
+}
+
+async function pNotif(v) {
+  const caixa = h('div', { class: 'card' });
+  v.append(...cab('Notificações', 'Solicitações enviadas pelos professores.'), caixa);
+  const desenhar = async aberta => {
+    const ls = await api('/api/portal/notificacoes');
+    caixa.replaceChildren(...(ls.length ? ls.flatMap(n => [
+      h('div', { class: 'linha' },
+        h('div', { style: 'flex:1' }, h('div', {}, h('strong', {}, 'Prof. ' + n.nomeProfessor), ' pede reunião sobre ' + n.nomeAluno), h('div', { class: 'mut' }, n.motivo + ' · sugerida para ' + n.dataSugerida)),
+        pill(n.estado === 'ENVIADA' ? 'Nova' : 'Lida', n.estado === 'ENVIADA' ? 'warn' : 'azul'),
+        h('button', { class: 'btn sec', onclick: () => api('/api/portal/notificacoes/' + n.id + '/lida', { method: 'PUT' }).then(() => desenhar(n.id)).catch(e => alert(e.message)) }, 'Abrir')),
+      aberta === n.id ? h('p', { class: 'mut' }, 'Pedido recebido em ' + n.criadaEm.replace('T', ' ').slice(0, 16) + '. Motivo: ' + n.motivo + '. Data sugerida: ' + n.dataSugerida + '.') : null])
+      : [h('p', { class: 'mut' }, 'Não tem notificações.')]));
+  };
+  await desenhar();
+}
+
+// ---- Administrador: lançamentos de teste (depois passam para o professor) ----
+async function pLancar(v) {
+  const [as, ps] = await Promise.all([api('/api/alunos'), api('/api/professores')]);
+  const opc = l => l.map(x => h('option', { value: x.id }, x.nomeCompleto)), inp = (t, p) => h('input', { class: 'inp', type: t, placeholder: p || '' });
+  const nA = h('select', { class: 'inp' }, opc(as)), nD = inp('text', 'Ex: Matemática'), nT = h('select', { class: 'inp' }, ['Teste 1', 'Teste 2'].map(t => h('option', {}, t))), nV = inp('number', '0 a 20'), m1 = msg();
+  const sP = h('select', { class: 'inp' }, opc(ps)), sA = h('select', { class: 'inp' }, opc(as)), sM = inp('text', 'Ex: Rendimento em Matemática'), sD = inp('date'), m2 = msg();
+  const enviar = (m, caminho, corpo) => async ev => {
+    const b = ev.target; b.disabled = true;
+    try { const r = await post(caminho, corpo()); dizer(m, r.mensagem, 1); } catch (e) { dizer(m, e.message); }
+    b.disabled = false;
+  };
+  v.append(...cab('Lançamentos (provisório)', 'Ferramenta do administrador para testar o portal do encarregado. Mais tarde passa para o professor.'),
+    h('div', { class: 'card' }, h('h2', {}, 'Lançar nota (1.º trimestre)'), h('label', {}, 'Aluno'), nA, h('label', {}, 'Disciplina'), nD,
+      h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Avaliação'), nT), h('div', {}, h('label', {}, 'Nota (0 a 20)'), nV)), m1, h('br'),
+      h('button', { class: 'btn', onclick: enviar(m1, '/api/notas', () => {
+        if (nV.value === '') throw new Error('Indique a nota.');
+        return { alunoId: Number(nA.value), disciplina: nD.value.trim(), avaliacao: nT.value, valor: Number(nV.value), trimestre: 1 };
+      }) }, 'Lançar nota')),
+    h('div', { class: 'card' }, h('h2', {}, 'Pedir reunião ao encarregado'), h('label', {}, 'Professor'), sP, h('label', {}, 'Aluno'), sA, h('label', {}, 'Motivo'), sM, h('label', {}, 'Data sugerida'), sD, m2, h('br'),
+      h('button', { class: 'btn', onclick: enviar(m2, '/api/solicitacoes', () => {
+        if (!sD.value) throw new Error('Indique a data sugerida.');
+        return { professorId: Number(sP.value), alunoId: Number(sA.value), motivo: sM.value.trim(), dataSugerida: sD.value };
+      }) }, 'Enviar pedido')));
+}
+
+const VISTAS = { turma: ['', pAlunosTurma] }; // páginas fora do menu
+
 const PAGINAS = { perfis: ['Cadastro de Perfis', pPerfis, [ADM, SEC]], turmas: ['Turmas', pTurmas, [ADM, SEC]], professores: ['Professores', pProf, [ADM, SEC]],
-  criar: ['Criar Conta', pCriar, [ADM, SEC]], encarregados: ['Encarregados', pEnc, [ADM, SEC]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM, SEC]] };
+  criar: ['Criar Conta', pCriar, [ADM, SEC]], encarregados: ['Encarregados', pEnc, [ADM, SEC]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM, SEC]],
+  educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]], lancar: ['Lançamentos (teste)', pLancar, [ADM]] };
 
 async function ir(k, arg) {
-  document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('on', b.dataset.k === (k === 'turma' ? 'turmas' : k)));
   const v = $('#vista'); v.replaceChildren();
-  try { await PAGINAS[k][1](v, arg); } catch (e) { v.append(h('p', { class: 'erro' }, e.message)); }
+  try { await (PAGINAS[k] || VISTAS[k])[1](v, arg); } catch (e) { v.append(h('p', { class: 'erro' }, e.message)); }
 }
 
 (async () => {

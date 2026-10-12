@@ -15,9 +15,15 @@ label{display:block;font-size:.8rem;font-weight:600;color:#66738c;margin:.9rem 0
 .vista{flex:1;padding:2rem;overflow:auto}
 .barra{display:flex;gap:.6rem;margin-bottom:1rem}.barra .inp{flex:1}
 table.t{width:100%;border-collapse:collapse}.t th{font-size:.75rem;color:#66738c;text-align:left;padding:.5rem .4rem}.t td{padding:.9rem .4rem;border-top:1px solid #e3e7ee}
-.pill{font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:99px;background:#eff2f7;color:#66738c}.pill.ok{background:#e6f6ec;color:#1b7a3a}.pill.off{background:#eff2f7}
+.pill{font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:99px;background:#eff2f7;color:#66738c}.pill.ok{background:#e6f6ec;color:#1b7a3a}.pill.off{background:#eff2f7}.pill.tr{background:#fdecec;color:#b3261e}
+select.sel{border:0;border-radius:99px;padding:.2rem .5rem;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer}
+select.sel.ok{background:#e6f6ec;color:#1b7a3a}select.sel.off{background:#eff2f7;color:#66738c}select.sel.tr{background:#fdecec;color:#b3261e}
 .perfis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem}
 .perfis button{height:80px;background:#eff2f7;border:1px solid #dfe4ec;border-radius:8px;color:#66738c;font-weight:600;cursor:pointer;font:inherit}
 .perfis button.on{background:#faf6ee;border-color:#b98a3e;color:#121c33;font-weight:700}
 .duas{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.linha{display:flex;align-items:center;gap:.6rem;padding:.9rem 0;border-top:1px solid #e3e7ee}
 @media(max-width:700px){.app{flex-direction:column}.lateral{width:auto;flex-direction:row;flex-wrap:wrap}.duas{grid-template-columns:1fr}}
+
+/* ---- Portal do encarregado ---- */
+.cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;max-width:900px}.cartoes .card{max-width:none;margin:0}
+.pill.warn{background:#fff1e6;color:#b45309}.pill.azul{background:#e6f1fa;color:#0b6bb0}

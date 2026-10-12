@@ -86,6 +86,13 @@ public class SegurancaConfig {
                 .requestMatchers("/api/encarregados/**", "/api/alunos/**", "/api/vinculos/**")
                         .hasAnyRole("ADMINISTRADOR", "SECRETARIA")
 
+                // Portal do encarregado: cada encarregado só vê os seus educandos (verificado no serviço)
+                .requestMatchers("/api/portal/**").hasRole("ENCARREGADO")
+
+                // Lançar notas e pedir reuniões: administrador (testes) e professores
+                .requestMatchers(HttpMethod.POST, "/api/notas", "/api/solicitacoes")
+                        .hasAnyRole("ADMINISTRADOR", "PROFESSOR")
+
                 // Qualquer outra rota da API exige sessão iniciada
                 .requestMatchers("/api/**").authenticated()
 

@@ -61,7 +61,11 @@ public class ManipuladorExcepcoes {
     /** Última defesa contra duplicados que escapem às verificações dos serviços. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResposta> integridade(DataIntegrityViolationException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErroResposta(409, "Já existe um registo com estes dados.", List.of()));
+        // Só é "duplicado" se a base de dados disser que é; outras violações (campo em falta, etc.) têm mensagem própria
+        String causa = String.valueOf(ex.getMostSpecificCause().getMessage());
+        String minuscula = causa.toLowerCase();
+        boolean duplicado = minuscula.contains("unique") || minuscula.contains("duplicate");
+        String mensagem = duplicado ? "Já existe um registo com estes dados." : "Não foi possível guardar os dados.";
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta(409, mensagem, List.of(causa)));
     }
 }
