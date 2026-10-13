@@ -236,8 +236,8 @@ async function pContas(v) {
     } catch (e) { alert(e.message); }
   };
   busca.oninput = desenhar; desenhar();
-  const cols = ['Nome', 'Perfil', 'Código', 'Conta'].concat(perfil === ADM ? ['Acção'] : []), tb = tabela(cols, []); tb.replaceChild(corpo, tb.tBodies[0]);
-  v.append(...cab('Contas de acesso', 'Contas dos utilizadores. Uma conta fica "Pendente" enquanto não tem senha definida.'), res, h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, gerar), tb));
+  const cols = ['Nome', 'Perfil', 'Origem SGA', 'Conta'].concat(perfil === ADM ? ['Acção'] : []), tb = tabela(cols, []); tb.replaceChild(corpo, tb.tBodies[0]);
+  v.append(...cab('Contas de acesso', 'Contas geradas a partir do registo sincronizado, com perfil definido automaticamente.'), res, h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, gerar), tb));
 }
 
 async function pPerfilEnc(v) {
@@ -248,7 +248,7 @@ async function pPerfilEnc(v) {
     const tel = h('input', { class: 'inp', value: p.telefone || '', placeholder: '+258 84 123 4567' }), em = h('input', { class: 'inp', type: 'email', value: p.email || '', placeholder: 'nome@exemplo.com' }), pr = h('input', { class: 'inp', value: p.profissao || '', placeholder: 'Opcional' }), m2 = msg();
     const marcas = p.educandos.map(e => { const cb = h('input', { type: 'checkbox' }); cb.checked = e.validado; const t = h('strong', {}, e.validado ? ' Validado' : ' Por validar'); cb.onchange = () => { t.textContent = cb.checked ? ' Validado' : ' Por validar'; }; return { e, cb, t }; });
     area.replaceChildren(h('h2', {}, p.nomeCompleto), h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Telemóvel'), tel), h('div', {}, h('label', {}, 'Email'), em)), h('label', {}, 'Profissão'), pr,
-      h('label', {}, 'Educandos vinculados'),
+      h('label', {}, 'Educandos vinculados (vindos do SGA)'),
       tabela(['Aluno', 'Turma', 'Parentesco', 'Vínculo'], marcas.length ? marcas.map(x => h('tr', {}, td(x.e.nomeAluno), td(x.e.turma, 1), td(x.e.parentesco || '—', 1), h('td', {}, x.cb, x.t)))
         : [h('tr', {}, h('td', { class: 'mut' }, 'Sem educandos associados. Use "Associação Aluno–Encarregado".'))]), m2, h('br'),
       h('button', { class: 'btn', onclick: async ev => { const b = ev.target; b.disabled = true; try {
@@ -273,11 +273,11 @@ async function pSolicitacoes(v) {
   const busca = h('input', { class: 'inp', placeholder: 'Pesquisar por aluno ou professor' }), filtro = h('select', { class: 'inp', style: 'width:auto' }, [['', 'Todos os estados'], ['ENVIADA', 'Nova'], ['LIDA', 'Lida']].map(([k, t]) => h('option', { value: k }, t))), corpo = h('tbody');
   const desenhar = () => {
     const q = busca.value.toLowerCase(), r = dados.filter(s => (!filtro.value || s.estado === filtro.value) && (s.nomeAluno + ' ' + s.nomeProfessor).toLowerCase().includes(q));
-    corpo.replaceChildren(...(r.length ? r.map(s => h('tr', {}, td('S-' + String(s.id).padStart(3, '0')), td('Prof. ' + s.nomeProfessor, 1), td(s.nomeAluno, 1), td(s.nomeEncarregado, 1), td(s.dataSugerida, 1),
+    corpo.replaceChildren(...(r.length ? r.map(s => h('tr', {}, td('S-' + String(s.id).padStart(3, '0')), td('Prof. ' + s.nomeProfessor, 1), td(s.nomeAluno, 1), td(s.dataSugerida, 1),
       td(pill(s.estado === 'ENVIADA' ? 'Nova' : 'Lida', s.estado === 'ENVIADA' ? 'warn' : 'azul')))) : [h('tr', {}, h('td', { class: 'mut' }, 'Sem solicitações.'))]));
   };
   busca.oninput = desenhar; filtro.onchange = desenhar; desenhar();
-  const tb = tabela(['Ref.', 'Professor', 'Aluno', 'Encarregado', 'Data sugerida', 'Estado'], []); tb.replaceChild(corpo, tb.tBodies[0]);
+  const tb = tabela(['Ref.', 'Professor', 'Aluno', 'Data sugerida', 'Estado'], []); tb.replaceChild(corpo, tb.tBodies[0]);
   v.append(...cab('Solicitações de reunião', 'Acompanhe as comunicações dos professores aos encarregados.'), h('div', { class: 'card', style: 'max-width:none' }, h('div', { class: 'barra' }, busca, filtro), tb));
 }
 
@@ -286,6 +286,8 @@ const hoje = (dias = 0) => new Date(Date.now() - new Date().getTimezoneOffset() 
 
 async function pMeusAlunos(v) {
   const as = await api('/api/professor/alunos'), turmas = [...new Set(as.map(a => a.nomeTurma))];
+  if (!as.length) { v.append(...cab('Meus alunos', 'Alunos das suas turmas.'), h('div', { class: 'card' }, h('h2', {}, 'Ainda não tem turmas associadas'),
+    h('p', { class: 'mut' }, 'O administrador associa cada professor às suas turmas no menu "Turmas do professor", ou pela sincronização com o SGA. Quando isso estiver feito, os seus alunos aparecem aqui.'))); return; }
   const fT = h('select', { class: 'inp', style: 'width:auto' }, h('option', { value: '' }, 'Todas as turmas'), turmas.map(t => h('option', { value: t }, t)));
   const busca = h('input', { class: 'inp', placeholder: 'Pesquisar aluno' }), corpo = h('tbody');
   const desenhar = () => {
@@ -364,6 +366,7 @@ async function pDocencia(v) {
 }
 
 // ---- Secretaria: Sincronização SGA ----
+const dtfLonga = x => new Date(x).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const dtf = x => new Date(x).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 async function pSga(v) {
   const topo = h('div'), historico = h('div'), cartoes = h('div', { class: 'stats' }), m = msg();
@@ -371,7 +374,7 @@ async function pSga(v) {
   const desenhar = r => {
     cartoes.replaceChildren(...[['Alunos', r.alunos], ['Turmas', r.turmas], ['Professores', r.professores], ['Encarregados', r.encarregados]].map(([t, n]) => h('div', { class: 'stat' }, h('span', {}, t), h('strong', {}, String(n)))));
     const ult = r.historico[0];
-    topo.replaceChildren(h('h2', {}, 'Última sincronização'), h('p', { class: 'mut' }, ult ? dtf(ult.dataHora) + ' · ' + (ult.estado === 'CONCLUIDA' ? ult.mensagem.toLowerCase() : 'falhou: ' + ult.mensagem) : 'Ainda não foi feita nenhuma sincronização.'));
+    topo.replaceChildren(h('h2', {}, 'Última sincronização'), h('p', { class: 'mut' }, ult ? dtfLonga(ult.dataHora) + ' · ' + (ult.estado === 'CONCLUIDA' ? ult.mensagem.toLowerCase() : 'falhou: ' + ult.mensagem) : 'Ainda não foi feita nenhuma sincronização.'));
     historico.replaceChildren(r.historico.length ? tabela(['Data', 'Registos', 'Novos', 'Alterados', 'Estado'], r.historico.map(x => {
       const ok = x.estado === 'CONCLUIDA';
       return h('tr', {}, td(dtf(x.dataHora)), td(x.registos || '—', 1), td(ok ? x.novos : '—', 1), td(ok ? x.alterados : '—', 1), td(pill(ok ? 'Concluída' : 'Falhou: ' + x.mensagem, ok ? 'ok' : 'tr')));
@@ -384,14 +387,13 @@ async function pSga(v) {
   };
   desenhar(await api('/api/sga'));
   v.append(...cab('Sincronização SGA', 'O SGA é a fonte única de alunos, turmas, professores, encarregados e vínculos.'), cartoes,
-    h('div', { class: 'card', style: 'max-width:1000px' }, h('div', { class: 'topo-sga' }, topo, botao), m, historico,
-      h('p', { class: 'mut' }, 'Ligação de demonstração: os dados vêm de um SGA simulado. As contas novas ficam "Pendentes" em Contas de acesso.')));
+    h('div', { class: 'card', style: 'max-width:1000px' }, h('div', { class: 'topo-sga' }, topo, botao), m, historico));
 }
 
 const VISTAS = { turma: ['', pAlunosTurma] }; // páginas fora do menu
 
-const PAGINAS = { perfis: ['Cadastro de Perfis', pPerfis, [ADM, SEC]], turmas: ['Turmas', pTurmas, [ADM, SEC]], professores: ['Professores', pProf, [ADM, SEC]],
-  criar: ['Criar Conta', pCriar, [ADM, SEC]], encarregados: ['Encarregados', pEnc, [ADM, SEC]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM, SEC]],
+const PAGINAS = { perfis: ['Cadastro de Perfis', pPerfis, [ADM]], turmas: ['Turmas', pTurmas, [ADM]], professores: ['Professores', pProf, [ADM]],
+  criar: ['Criar Conta', pCriar, [ADM]], encarregados: ['Encarregados', pEnc, [ADM]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM]],
   educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]], lancar: ['Lançamentos (teste)', pLancar, [ADM]],
   sga: ['Sincronização SGA', pSga, [ADM, SEC]], contas: ['Contas de acesso', pContas, [ADM, SEC]], perfilEnc: ['Perfil do encarregado', pPerfilEnc, [ADM, SEC]], solicitacoes: ['Solicitações', pSolicitacoes, [ADM, SEC]],
   docencia: ['Turmas do professor', pDocencia, [ADM]],
@@ -409,5 +411,5 @@ async function ir(k, arg) {
     Object.entries(PAGINAS).filter(([, p]) => p[2].includes(perfil)).forEach(([k, p]) => menu.append(h('button', { 'data-k': k, onclick: () => ir(k) }, p[0])));
     menu.append(h('div', { class: 'fim' }, u.nomeCompleto, h('br'), h('button', { onclick: async () => { try { await fetch(API_URL + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {} location.href = 'login.html'; } }, 'Sair')));
     const primeira = menu.querySelector('button'); primeira ? ir(primeira.dataset.k) : $('#vista').append(h('p', {}, 'O seu perfil ainda não tem módulos nesta versão.'));
-  } catch (e) { location.href = 'login.html'; }
+  } catch (e) { $('#vista').append(h('p', { class: 'erro' }, 'Não foi possível abrir o painel: ' + e.message)); }
 })();

@@ -43,6 +43,9 @@ public class SgaSimulado implements SgaFonte {
                         new VinculoSga("2025-0203", "841234567", "Mãe"),
                         new VinculoSga("2024-0159", "842345678", "Pai"),
                         new VinculoSga("2023-0034", "874567890", "Pai"),
-                        new VinculoSga("2024-0112", "823456789", "Tio / Tia")));
+                        new VinculoSga("2024-0112", "823456789", "Tio / Tia")),
+                List.of(new DocenciaSga("PROF-031", "10ª A", ano), new DocenciaSga("PROF-031", "10ª B", ano),
+                        new DocenciaSga("PROF-040", "10ª A", ano), new DocenciaSga("PROF-040", "11ª A", ano),
+                        new DocenciaSga("PROF-052", "10ª B", ano)));
     }
 }

@@ -14,7 +14,7 @@ public interface SgaFonte {
     SgaDados obter();
 
     record SgaDados(List<TurmaSga> turmas, List<ProfessorSga> professores, List<EncarregadoSga> encarregados,
-                    List<AlunoSga> alunos, List<VinculoSga> vinculos) {
+                    List<AlunoSga> alunos, List<VinculoSga> vinculos, List<DocenciaSga> docencia) {
     }
 
     record TurmaSga(String nome, int ano, String sala) {
@@ -28,6 +28,10 @@ public interface SgaFonte {
     }
 
     record AlunoSga(String codigo, String nome, String email, LocalDate nascimento, String turma, int anoTurma) {
+    }
+
+    /** Turma que um professor lecciona. */
+    record DocenciaSga(String codigoProfessor, String turma, int anoTurma) {
     }
 
     record VinculoSga(String codigoAluno, String telefoneEncarregado, String parentesco) {

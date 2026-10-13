@@ -1,6 +1,7 @@
 package com.colegiosapiens.servico;
 
 import com.colegiosapiens.dto.SgaDto;
+import com.colegiosapiens.modelo.AlocacaoDocente;
 import com.colegiosapiens.modelo.Aluno;
 import com.colegiosapiens.modelo.EncarregadoEducacao;
 import com.colegiosapiens.modelo.Professor;
@@ -8,6 +9,7 @@ import com.colegiosapiens.modelo.SincronizacaoSga;
 import com.colegiosapiens.modelo.Turma;
 import com.colegiosapiens.modelo.Utilizador;
 import com.colegiosapiens.modelo.VinculoParental;
+import com.colegiosapiens.repositorio.AlocacaoDocenteRepositorio;
 import com.colegiosapiens.repositorio.AlunoRepositorio;
 import com.colegiosapiens.repositorio.EncarregadoRepositorio;
 import com.colegiosapiens.repositorio.ProfessorRepositorio;
@@ -17,6 +19,7 @@ import com.colegiosapiens.repositorio.UtilizadorRepositorio;
 import com.colegiosapiens.repositorio.VinculoParentalRepositorio;
 import com.colegiosapiens.sga.SgaFonte;
 import com.colegiosapiens.sga.SgaFonte.AlunoSga;
+import com.colegiosapiens.sga.SgaFonte.DocenciaSga;
 import com.colegiosapiens.sga.SgaFonte.EncarregadoSga;
 import com.colegiosapiens.sga.SgaFonte.ProfessorSga;
 import com.colegiosapiens.sga.SgaFonte.SgaDados;
@@ -45,12 +48,15 @@ public class SgaServico {
     private final EncarregadoRepositorio encarregados;
     private final UtilizadorRepositorio utilizadores;
     private final VinculoParentalRepositorio vinculos;
+    private final AlocacaoDocenteRepositorio alocacoes;
     private final TransactionTemplate transacao;
 
     public SgaServico(SgaFonte fonte, SincronizacaoSgaRepositorio historico, TurmaRepositorio turmas,
                       ProfessorRepositorio professores, AlunoRepositorio alunos,
                       EncarregadoRepositorio encarregados, UtilizadorRepositorio utilizadores,
-                      VinculoParentalRepositorio vinculos, PlatformTransactionManager gestor) {
+                      VinculoParentalRepositorio vinculos, AlocacaoDocenteRepositorio alocacoes,
+                      PlatformTransactionManager gestor) {
+        this.alocacoes = alocacoes;
         this.fonte = fonte;
         this.historico = historico;
         this.turmas = turmas;
@@ -91,7 +97,7 @@ public class SgaServico {
     private Resultado aplicar(SgaDados d) {
         Resultado r = new Resultado();
         r.registos = d.turmas().size() + d.professores().size() + d.encarregados().size()
-                + d.alunos().size() + d.vinculos().size();
+                + d.alunos().size() + d.vinculos().size() + d.docencia().size();
 
         for (TurmaSga t : d.turmas()) {
             Optional<Turma> existente = turmas.findByNomeTurmaAndAnoLectivo(t.nome(), t.ano());
@@ -199,6 +205,18 @@ public class SgaServico {
                 VinculoParental vinculo = new VinculoParental(aluno.get(), encarregado);
                 vinculo.setParentesco(v.parentesco());
                 vinculos.save(vinculo);
+                r.novos++;
+            }
+        }
+        for (DocenciaSga dc : d.docencia()) {
+            Optional<Professor> prof = professores.findByCodigoDocente(dc.codigoProfessor());
+            Optional<Turma> turma = turmas.findByNomeTurmaAndAnoLectivo(dc.turma(), dc.anoTurma());
+            if (prof.isEmpty() || turma.isEmpty()) {
+                r.ignorados++;
+                continue;
+            }
+            if (!alocacoes.existsByProfessorIdAndTurmaId(prof.get().getId(), turma.get().getId())) {
+                alocacoes.save(new AlocacaoDocente(prof.get(), turma.get()));
                 r.novos++;
             }
         }
