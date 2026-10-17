@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,8 @@ import java.util.List;
 /**
  * FERRAMENTA SÓ PARA DESENVOLVIMENTO. APAGAR ESTE FICHEIRO antes de entregar ao cliente.
  *
+ * Só é carregada no perfil "dev" (nunca em produção).
+ *
  * As senhas são guardadas codificadas (BCrypt) e não podem ser lidas. Esta ferramenta faz duas coisas ao arrancar:
  *  1. Lista no log todos os utilizadores (nome, e-mail, telefone, perfil, estado).
  *  2. Define senhas conhecidas, se pedir no application.properties:
@@ -21,6 +24,7 @@ import java.util.List;
  *       sapiens.dev.repor=ana@x.com=Nova@1234;jose@x.com=Abc@12345  -> só estes (e-mail ou telefone = nova senha)
  */
 @Component
+@Profile("dev")
 public class FerramentaDev implements CommandLineRunner {
 
     private static final Logger LOG = LoggerFactory.getLogger(FerramentaDev.class);
