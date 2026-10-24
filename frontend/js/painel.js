@@ -36,7 +36,7 @@ function lista(o) {
     const tb = tabela(o.cols, []); tb.replaceChild(corpo, tb.tBodies[0]);
     const form = o.form ? o.form(recarregar) : null; if (form) form.hidden = true;
     const botao = o.criar ? h('button', { class: 'btn', onclick: () => form ? (form.hidden = !form.hidden) : ir('criar', o.criar) }, o.botao) : null;
-    v.append(...cab(o.titulo, o.sub), form, h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, botao), tb));
+    v.append(...cab(o.titulo, o.sub), ...(form ? [form] : []), h('div', { class: 'card' }, h('div', { class: 'barra' }, busca, botao), tb));
   };
 }
 
@@ -186,31 +186,6 @@ async function pNotif(v) {
   await desenhar();
 }
 
-// ---- Administrador: lançamentos de teste (depois passam para o professor) ----
-async function pLancar(v) {
-  const [as, ps] = await Promise.all([api('/api/alunos'), api('/api/professores')]);
-  const opc = l => l.map(x => h('option', { value: x.id }, x.nomeCompleto)), inp = (t, p) => h('input', { class: 'inp', type: t, placeholder: p || '' });
-  const nA = h('select', { class: 'inp' }, opc(as)), nD = inp('text', 'Ex: Matemática'), nT = h('select', { class: 'inp' }, ['Teste 1', 'Teste 2'].map(t => h('option', {}, t))), nV = inp('number', '0 a 20'), m1 = msg();
-  const sP = h('select', { class: 'inp' }, opc(ps)), sA = h('select', { class: 'inp' }, opc(as)), sM = inp('text', 'Ex: Rendimento em Matemática'), sD = inp('date'), m2 = msg();
-  const enviar = (m, caminho, corpo) => async ev => {
-    const b = ev.target; b.disabled = true;
-    try { const r = await post(caminho, corpo()); dizer(m, r.mensagem, 1); } catch (e) { dizer(m, e.message); }
-    b.disabled = false;
-  };
-  v.append(...cab('Lançamentos (provisório)', 'Ferramenta do administrador para testar o portal do encarregado. Mais tarde passa para o professor.'),
-    h('div', { class: 'card' }, h('h2', {}, 'Lançar nota (1.º trimestre)'), h('label', {}, 'Aluno'), nA, h('label', {}, 'Disciplina'), nD,
-      h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Avaliação'), nT), h('div', {}, h('label', {}, 'Nota (0 a 20)'), nV)), m1, h('br'),
-      h('button', { class: 'btn', onclick: enviar(m1, '/api/notas', () => {
-        if (nV.value === '') throw new Error('Indique a nota.');
-        return { alunoId: Number(nA.value), disciplina: nD.value.trim(), avaliacao: nT.value, valor: Number(nV.value), trimestre: 1 };
-      }) }, 'Lançar nota')),
-    h('div', { class: 'card' }, h('h2', {}, 'Pedir reunião ao encarregado'), h('label', {}, 'Professor'), sP, h('label', {}, 'Aluno'), sA, h('label', {}, 'Motivo'), sM, h('label', {}, 'Data sugerida'), sD, m2, h('br'),
-      h('button', { class: 'btn', onclick: enviar(m2, '/api/solicitacoes', () => {
-        if (!sD.value) throw new Error('Indique a data sugerida.');
-        return { professorId: Number(sP.value), alunoId: Number(sA.value), motivo: sM.value.trim(), dataSugerida: sD.value };
-      }) }, 'Enviar pedido')));
-}
-
 // ---- Secretaria: Contas de acesso, Perfil do encarregado, Solicitações de reunião ----
 const PERFIS = { ADMINISTRADOR: 'Administrador', SECRETARIA: 'Secretaria', PROFESSOR: 'Professor', ENCARREGADO: 'Encarregado', ALUNO: 'Aluno' };
 const put = (c, d) => api(c, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
@@ -250,7 +225,7 @@ async function pPerfilEnc(v) {
     area.replaceChildren(h('h2', {}, p.nomeCompleto), h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Telemóvel'), tel), h('div', {}, h('label', {}, 'Email'), em)), h('label', {}, 'Profissão'), pr,
       h('label', {}, 'Educandos vinculados (vindos do SGA)'),
       tabela(['Aluno', 'Turma', 'Parentesco', 'Vínculo'], marcas.length ? marcas.map(x => h('tr', {}, td(x.e.nomeAluno), td(x.e.turma, 1), td(x.e.parentesco || '—', 1), h('td', {}, x.cb, x.t)))
-        : [h('tr', {}, h('td', { class: 'mut' }, 'Sem educandos associados. Use "Associação Aluno–Encarregado".'))]), m2, h('br'),
+        : [h('tr', {}, h('td', { class: 'mut' }, 'Sem educandos associados.'))]), m2, h('br'),
       h('button', { class: 'btn', onclick: async ev => { const b = ev.target; b.disabled = true; try {
         await put('/api/encarregados/' + id + '/perfil', { telefone: tel.value.trim(), email: em.value.trim(), profissao: pr.value.trim(), vinculos: marcas.map(x => ({ vinculoId: x.e.vinculoId, validado: x.cb.checked })) });
         dizer(m2, 'Perfil guardado.', 1); } catch (e) { dizer(m2, e.message); } b.disabled = false; } }, 'Guardar perfil'), ' ',
@@ -293,7 +268,7 @@ async function pMeusAlunos(v) {
   const desenhar = () => {
     const q = busca.value.toLowerCase(), r = as.filter(a => (!fT.value || a.nomeTurma === fT.value) && a.nomeCompleto.toLowerCase().includes(q));
     corpo.replaceChildren(...(r.length ? r.map(a => h('tr', {}, td(a.nomeCompleto), td(a.codigoEstudante, 1), td(a.nomeTurma, 1), td(h('button', { class: 'btn sec', onclick: () => ir('solicitar', a.id) }, 'Solicitar reunião'))))
-      : [h('tr', {}, h('td', { class: 'mut' }, as.length ? 'Sem resultados.' : 'Ainda não tem turmas associadas. Peça ao administrador.'))]));
+      : [h('tr', {}, h('td', { class: 'mut' }, 'Sem resultados.'))]));
   };
   busca.oninput = desenhar; fT.onchange = desenhar; desenhar();
   const tb = tabela(['Nome', 'Nº estudante', 'Turma', 'Ação'], []); tb.replaceChild(corpo, tb.tBodies[0]);
@@ -347,6 +322,31 @@ async function pSolicitar(v, pre) {
     } }, 'Enviar solicitação')));
 }
 
+// ---- Administrador: lançamentos de teste (enquanto o professor não tem a tela de notas) ----
+async function pLancar(v) {
+  const [as, ps] = await Promise.all([api('/api/alunos'), api('/api/professores')]);
+  const opc = l => l.map(x => h('option', { value: x.id }, x.nomeCompleto)), inp = (t, p) => h('input', { class: 'inp', type: t, placeholder: p || '' });
+  const nA = h('select', { class: 'inp' }, opc(as)), nD = inp('text', 'Ex: Matemática'), nT = h('select', { class: 'inp' }, ['Teste 1', 'Teste 2'].map(t => h('option', {}, t))), nV = inp('number', '0 a 20'), m1 = msg();
+  const sP = h('select', { class: 'inp' }, opc(ps)), sA = h('select', { class: 'inp' }, opc(as)), sM = inp('text', 'Ex: Rendimento em Matemática'), sD = inp('date'), m2 = msg();
+  const enviar = (m, caminho, corpo) => async ev => {
+    const b = ev.target; b.disabled = true;
+    try { const r = await post(caminho, corpo()); dizer(m, r.mensagem, 1); } catch (e) { dizer(m, e.message); }
+    b.disabled = false;
+  };
+  v.append(...cab('Lançamentos (provisório)', 'Ferramenta do administrador para testar o portal do encarregado. Mais tarde passa para o professor.'),
+    h('div', { class: 'card' }, h('h2', {}, 'Lançar nota (1.º trimestre)'), h('label', {}, 'Aluno'), nA, h('label', {}, 'Disciplina'), nD,
+      h('div', { class: 'duas' }, h('div', {}, h('label', {}, 'Avaliação'), nT), h('div', {}, h('label', {}, 'Nota (0 a 20)'), nV)), m1, h('br'),
+      h('button', { class: 'btn', onclick: enviar(m1, '/api/notas', () => {
+        if (nV.value === '') throw new Error('Indique a nota.');
+        return { alunoId: Number(nA.value), disciplina: nD.value.trim(), avaliacao: nT.value, valor: Number(nV.value), trimestre: 1 };
+      }) }, 'Lançar nota')),
+    h('div', { class: 'card' }, h('h2', {}, 'Pedir reunião ao encarregado'), h('label', {}, 'Professor'), sP, h('label', {}, 'Aluno'), sA, h('label', {}, 'Motivo'), sM, h('label', {}, 'Data sugerida'), sD, m2, h('br'),
+      h('button', { class: 'btn', onclick: enviar(m2, '/api/solicitacoes', () => {
+        if (!sD.value) throw new Error('Indique a data sugerida.');
+        return { professorId: Number(sP.value), alunoId: Number(sA.value), motivo: sM.value.trim(), dataSugerida: sD.value };
+      }) }, 'Enviar pedido')));
+}
+
 // ---- Administrador: associar professores a turmas ----
 async function pDocencia(v) {
   const [ps, ts] = await Promise.all([api('/api/professores'), api('/api/turmas')]);
@@ -394,8 +394,9 @@ const VISTAS = { turma: ['', pAlunosTurma] }; // páginas fora do menu
 
 const PAGINAS = { perfis: ['Cadastro de Perfis', pPerfis, [ADM]], turmas: ['Turmas', pTurmas, [ADM]], professores: ['Professores', pProf, [ADM]],
   criar: ['Criar Conta', pCriar, [ADM]], encarregados: ['Encarregados', pEnc, [ADM]], assoc: ['Associação Aluno–Encarregado', pAssoc, [ADM]],
-  educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]], lancar: ['Lançamentos (teste)', pLancar, [ADM]],
+  educandos: ['Meus educandos', pEducandos, [ENC]], notas: ['Notas', pNotas, [ENC]], notificacoes: ['Notificações', pNotif, [ENC]],
   sga: ['Sincronização SGA', pSga, [ADM, SEC]], contas: ['Contas de acesso', pContas, [ADM, SEC]], perfilEnc: ['Perfil do encarregado', pPerfilEnc, [ADM, SEC]], solicitacoes: ['Solicitações', pSolicitacoes, [ADM, SEC]],
+  lancar: ['Lançamentos (teste)', pLancar, [ADM]],
   docencia: ['Turmas do professor', pDocencia, [ADM]],
   meusAlunos: ['Meus alunos', pMeusAlunos, [PRO]], assiduidade: ['Assiduidade', pAssiduidade, [PRO]], solicitar: ['Solicitar reunião', pSolicitar, [PRO]] };
 
